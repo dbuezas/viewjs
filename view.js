@@ -1,4 +1,3 @@
-// test modification
 
 /**
  * ViewJS 0.1.0
