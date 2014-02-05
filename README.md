@@ -24,7 +24,7 @@ Examination of a view from different perspectives & definition of terminology:
   - self-contained/self-managed piece of UI, most like a widget
   - scoping: managed DOM subtree that has scoped styling and behavior
   - composition: view instances can be in a parent/child relationship meaning that a view may have one or more other views nested inside of itself. This results in a tree structure, the "View Hierarchy"
-  - lifecycle: a view has a lifecycle (construction/instantiation, loading, [showing, hiding, doing stuff] unloading, deallocation)
+  - lifecycle: a view has a lifecycle (construction/instantiation, loading, [showing, hiding, doing stuff], unloading, deallocation)
   - memory management
 
 ## Dependencies
