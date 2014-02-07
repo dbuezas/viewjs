@@ -29,7 +29,6 @@
         self._name;
         self._bundle;
         self._isRootView;
-        self._parentView;
         self._onViewDidLoadCallbacks = $.Callbacks("unique memory");
         self._onViewWillUnloadCallbacks = $.Callbacks("unique memory");
 
@@ -134,30 +133,27 @@
      *  Markup/DOM management
      */
 
-    // Returns the actual DOM element globally selected by self.name property:
-    View.prototype._elementForName = function () {
-        var self = this;
-        if (self.name === undefined) {
-            return $([]); // allow evaluation of length property
-        }
-        return $("[data-view-name='" + self.name + "']");
-    };
-
-    // Determines wether the view's DOM is currently loaded (true if containerElement and viewElement exist):
+    // Determines wether the view's DOM is currently loaded (true if _viewElement and _containerElement exist):
     View.prototype.isLoaded = function () {
         var self = this;
-        return ( (self._containerElement !== undefined ) && (self._viewElement !== undefined ) );
+        return (self._viewElement && self._viewElement.length > 0 && self._containerElement && self._containerElement.length > 0);
     };
 
-    // Helper method for performing a jQuery selector scoped to the inner DOM ("m"arkup) of the view:
-    // - self.m() without parameters will return the root DOM node of the view
-    // - if the view is not loaded, undefined will be returned
-    View.prototype.m = function (selector) {
+    // Performs a jQuery selector scoped to the root element of the loaded view:
+    // - returns the root element of the loaded view if invoked without parameters
+    // - returns undefined if the view is not loaded
+    // TODO: don't select deeper than the parent view (ignore inner DOM of child views)
+    View.prototype.$ = function (selector) {
         var self = this;
-        if (selector !== undefined && self.isLoaded()) {
-            return self._viewElement.find(selector);
+        if (self.isLoaded()) {
+            return selector ? self._viewElement.find(selector) : self._viewElement;
+        } else { // view not loaded
+            if (selector) { // selector specified
+                throw "[View.prototype.$] Error while selecting inner elements of a view: View is not loaded.";
+            } else { // selecting root element
+                return []; // view is not loaded
+            }
         }
-        return self._viewElement;
     };
 
     // Loads markup from the HTML file specified by self._bundle into the DOM inside of the container
@@ -179,7 +175,8 @@
         self.unload();
 
         // View is not loaded, so get a backup of the root (container) element identified by [data-view-name] for later use:
-        self._containerElement = self._elementForName();
+        // TODO: don't select deeper than the parent view (ignore inner DOM of child views)
+        self._containerElement = $("[data-view-name='" + self._name + "']");
 
         // In order for a view to get loaded, a valid container element must be existent:
         if (self._containerElement.length === 0) {
