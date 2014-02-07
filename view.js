@@ -25,21 +25,34 @@
             return new View(config);
         }
 
-        // Configure:
-        config = config || {};
-        self._isRootView                = self.configure(self._isRootView,                  config.isRootView,                  false);
-        self._bundle                    = self.configure(self._bundle,                      config.bundle,                      undefined);
-        self._container                 = self.configure(self._container,                   config.container,                   undefined);
-        self._onViewDidLoad             = self.configure(self._onViewDidLoad,               config.onViewDidLoad,               function () {});
-        self._onViewWillUnload          = self.configure(self._onViewWillUnload,            config.onViewWillUnload,            function () {});
+        // Private attributes with public accessors/properties (see $.extend below):
+        self._container;
+        self._bundle;
+        self._isRootView;
+        self._parentView;
+        self._onViewDidLoad;
+        self._onViewWillUnload;
 
-        // DEBUG: set unique id from incremented instance counter:
-        /*
-        if ( (config.ignoreInstanceCounter === undefined) || (config.ignoreInstanceCounter !== undefined && config.ignoreInstanceCounter === false) ) {
-            self.id = View.prototype.instanceCounter += 1;
-            //console.log(self.id);
-        }
-        */
+        // Public attributes:
+        // Requirement:
+        // - attribute in instance config has highest precedence
+        // - if attribute in instance config not defined -> attribute in prototype/self has next highest precedence
+        // - if attribute in prototype/self not defined -> attribute in defaults has next highest precedence
+        // $.extend(self, defaults, self, config); // not directly possible with jquery, hence the longer solution
+        var selfWithDefaults = $.extend({
+            // Container the view should be loaded into:
+            container: undefined,
+            // HTML & CSS module/filenames:
+            bundle: undefined,
+            // Determines whether this view is the first view in a view hierarchy (has no parent view):
+            isRootView: false,
+            // Called when the view has been loaded:
+            onViewDidLoad: $.noop,
+            // Called before the view is unloaded:
+            onViewWillUnload: $.noop
+        }, self); // if not already defined on prototype/self -> set default
+        $.extend(self, selfWithDefaults); // apply default on self
+        $.extend(self, config); // config is king
 
         // Pseudo private/read only properties:
         self._containerElement = undefined;
@@ -52,30 +65,51 @@
     }
 
     /*
-     *  Helper
+     *  Accessors
      */
 
-    //View.prototype.instanceCounter = -1; // DEBUG
+    // container:
+    Object.defineProperty(View.prototype, "container", {
+        get: function () { return this._container; },
+        set: function (container) {
+            if (this.isLoaded()) throw "[View->container] Cannot change property while view is loaded.";
+            this._container = container;
+        }
+    });
 
-    // Helper function for fetching config params into properties and setting defaults.
-    View.prototype.configure = function (propertyValue, configValue, defaultValue) {
-        // Assign defaultValue if propertyValue is not defined:
-        if (propertyValue === undefined) { // better than: propertyValue = propertyValue || defaultValue; // fails when property value is false
-            propertyValue = defaultValue;
+    // bundle:
+    Object.defineProperty(View.prototype, "bundle", {
+        get: function () { return this._bundle; },
+        set: function (bundle) {
+            if (this.isLoaded()) throw "[View->bundle] Cannot change property while view is loaded.";
+            this._bundle = bundle;
         }
-        // Expect undefined or a function to be configured if the default value is a function:
-        if (typeof defaultValue === "function") {
-            if (!((typeof configValue === "function") || (configValue === undefined))) {
-                throw "[View.prototype.configure] Expected a function (or undefined) as the configuration value.";
-            }
+    });
+
+    // isRootView:
+    Object.defineProperty(View.prototype, "isRootView", {
+        get: function () { return this._isRootView; },
+        set: function (isRootView) {
+            if (this.isLoaded()) throw "[View->isRootView] Cannot change property while view is loaded.";
+            this._isRootView = isRootView;
         }
-        // Assign configValue if defined:
-        if (configValue !== undefined) {
-            propertyValue = configValue;
+    });
+
+    // onViewDidLoad:
+    Object.defineProperty(View.prototype, "onViewDidLoad", {
+        get: function () { return this._onViewDidLoad; },
+        set: function (onViewDidLoad) {
+            this._onViewDidLoad = onViewDidLoad;
         }
-        // Return result:
-        return propertyValue;
-    };
+    });
+
+    // onViewWillUnload:
+    Object.defineProperty(View.prototype, "onViewWillUnload", {
+        get: function () { return this._onViewWillUnload; },
+        set: function (onViewWillUnload) {
+            this._onViewWillUnload = onViewWillUnload;
+        }
+    });
 
     /*
      *  Lifecycle inheritance interface/notification hooks
@@ -86,22 +120,6 @@
     };
 
     View.prototype.viewWillUnload = function () {
-        // optionally override/implement in inherited object
-    };
-
-    View.prototype.viewWillAppear = function () {
-        // optionally override/implement in inherited object
-    };
-
-    View.prototype.viewDidAppear = function () {
-        // optionally override/implement in inherited object
-    };
-
-    View.prototype.viewWillDisappear = function () {
-        // optionally override/implement in inherited object
-    };
-
-    View.prototype.viewDidDisappear = function () {
         // optionally override/implement in inherited object
     };
 
@@ -173,7 +191,7 @@
 
             // View is basically loaded, so call load notification on self and on stakeholder:
             self.viewDidLoad();
-            self._onViewDidLoad(self);
+            self.onViewDidLoad(self);
             self._viewDidLoadCalled = true;
         });
 
@@ -188,7 +206,7 @@
 
             // Call unload notification method on self and on stakeholder before deleting the view's DOM:
             self.viewWillUnload();
-            self._onViewWillUnload(self);
+            self.onViewWillUnload(self);
         }
 
         // Delete the view's DOM while leaving the container intact:
