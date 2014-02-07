@@ -26,12 +26,16 @@
         }
 
         // Private attributes with public accessors/properties (see $.extend below):
-        self._container;
+        self._name;
         self._bundle;
         self._isRootView;
         self._parentView;
         self._onViewDidLoadCallbacks = $.Callbacks("unique memory");
         self._onViewWillUnloadCallbacks = $.Callbacks("unique memory");
+
+        // Private (internal only) attributes:
+        self._viewElement; // loaded root DOM node (replacement of the original container element)
+        self._containerElement; // backup copy of the original container element for restoring upon unloading
 
         // Public attributes:
         // Requirement:
@@ -40,8 +44,8 @@
         // - if attribute in prototype/self not defined -> attribute in defaults has next highest precedence
         // $.extend(self, defaults, self, config); // not directly possible with jquery, hence the longer solution
         var selfWithDefaults = $.extend({
-            // Container the view should be loaded into:
-            container: undefined,
+            // Unique name for the view to be distinguished from other views at the same hierarchy level:
+            name: undefined,
             // HTML & CSS module/filenames:
             bundle: undefined,
             // Determines whether this view is the first view in a view hierarchy (has no parent view):
@@ -54,10 +58,6 @@
         $.extend(self, selfWithDefaults); // apply default on self
         $.extend(self, config); // config is king
 
-        // Pseudo private/read only properties:
-        self._containerElement = undefined;
-        self._viewElement = undefined;
-
         return self;
     }
 
@@ -65,12 +65,12 @@
      *  Accessors
      */
 
-    // container:
-    Object.defineProperty(View.prototype, "container", {
-        get: function () { return this._container; },
-        set: function (container) {
-            if (this.isLoaded()) throw "[View->container] Cannot change property while view is loaded.";
-            this._container = container;
+    // name:
+    Object.defineProperty(View.prototype, "name", {
+        get: function () { return this._name; },
+        set: function (name) {
+            if (this.isLoaded()) throw "[View->name] Cannot change property while view is loaded.";
+            this._name = name;
         }
     });
 
@@ -134,13 +134,13 @@
      *  Markup/DOM management
      */
 
-    // Returns the actual DOM element globally selected by self._container property:
-    View.prototype._elementForContainer = function () {
+    // Returns the actual DOM element globally selected by self.name property:
+    View.prototype._elementForName = function () {
         var self = this;
-        if (self._container === undefined) {
-            return []; // allow evaluation of length property
+        if (self.name === undefined) {
+            return $([]); // allow evaluation of length property
         }
-        return $("[data-view-container='" + self._container + "']");
+        return $("[data-view-name='" + self.name + "']");
     };
 
     // Determines wether the view's DOM is currently loaded (true if containerElement and viewElement exist):
@@ -165,38 +165,54 @@
     View.prototype.load = function () {
         var self = this;
 
-        // If self is already loaded, unload from currently occupied container so that a reload is possible:
+        // A unique name must be configured so that the view instance can be distinguished from other views at the same hierarchy level:
+        if (!self._name) {
+            throw "[View.prototype.load] Error while loading a view into a container: Name not specified.";
+        }
+
+        // A bundle must be configured (it must match a valid requirejs module id later on):
+        if (!self._bundle) {
+            throw "[View.prototype._load] Error while loading a view into a container: (HTML/CSS)-bundle not specified.";
+        }
+
+        // If the view is already loaded, unload from currently occupied container element so that a reload is possible:
         self.unload();
 
-        // Get the container element:
-        self._containerElement = self._elementForContainer();
+        // View is not loaded, so get a backup of the root (container) element identified by [data-view-name] for later use:
+        self._containerElement = self._elementForName();
 
-        // In order to be loaded, views need to have a reference to an existing container element:
+        // In order for a view to get loaded, a valid container element must be existent:
         if (self._containerElement.length === 0) {
-            throw "[View.prototype.load] Error while loading a view into a container: container not specified or the container element is not existent.";
+            throw "[View.prototype._load] Error while loading a view into a container: Container element not specified or not existent.";
         }
 
         // Forbid the view to take over a container that's already hosting another view:
         if (self._containerElement.children().length > 0) {
-            throw "[View.prototype.load] Error while loading a view into a container: the container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
-        }
-
-        // A bundle must be configured at this point of the loading process (reject loading an undefined bundle):
-        // Note: The bundle must match a valid requirejs module id.
-        if (self._bundle === undefined) {
-            throw "[View.prototype.load] Error while loading a view into a container: (HTML/CSS)-bundle not specified.";
+            throw "[View.prototype._load] Error while loading a view into a container: Container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
         }
 
         // Load equally named HTML markup and CSS stylesheet files via require loader plugins (they can only be loaded paired/they must have the same file name):
         require(["html!" + self._bundle + ".html", "css!" + self._bundle], function (html, css) {
 
-            // Load HTML into DOM inside of the container element:
-            self._containerElement.html(html);
+            // The new view element is based on the container element:
+            self._viewElement = self._containerElement;
 
-            // Apply own DOM reference expecting a single element as the root node:
-            self._viewElement = self._containerElement.children().eq(0);
+            // Retain a copy of the original container element for restoring upon unloading:
+            self._containerElement = self._containerElement.clone();
 
-            // View is basically loaded, so call load notification on self and on stakeholder:
+            // Replace the container element with the loaded view's root element:
+            var $html = $(html);
+            self._viewElement.replaceWith($html);
+            self._viewElement = $html; // TODO: find out why this is necessary (why replaceWith doesn't suffice)
+
+            // Copy the original container's properties over to the view element:
+            self._viewElement.addClass(self._containerElement[0].className);
+            self._viewElement.attr("data-view-name", self._containerElement.attr("data-view-name"));
+
+            // Set type of view controller for scoping purposes:
+            self._viewElement.attr("data-view-controller", self.constructor.name);
+
+            // View is basically loaded, so call load notification on self and on subscribed stakeholders:
             self.viewDidLoad();
             self._onViewDidLoadCallbacks.fire(self);
         });
@@ -208,21 +224,21 @@
     // Unloads the DOM by emptying the container:
     View.prototype.unload = function () {
         var self = this;
+
+        // Unload only if loaded:
         if (self.isLoaded()) {
 
             // Call unload notification method on self and on stakeholder before deleting the view's DOM:
             self.viewWillUnload();
             self._onViewWillUnloadCallbacks.fire(self);
-        }
 
-        // Delete the view's DOM while leaving the container intact:
-        if (self._containerElement !== undefined) {
-            self._containerElement.empty();
-        }
+            // Delete the view's DOM by restoring the original container element:
+            self._viewElement.replaceWith(self._containerElement);
 
-        // Release DOM references:
-        self._containerElement = undefined;
-        self._viewElement = undefined;
+            // Release DOM references:
+            self._containerElement = undefined;
+            self._viewElement = undefined;
+        }
     };
 
     // Return the constructor as the module value:

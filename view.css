@@ -6,19 +6,7 @@
 
 /* View Container and View base defaults rules */
 
-/*
-    Ensure that views expand to the bounds of their containers. This
-    rule is mandatory for all view root nodes in order to ensure
-    consistency and similar layouting behaviour across all views.
-*/
-
-[data-view] {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-/* View Container dimensions should never be influenced by their content (views). */
-[data-view-container] {
+/* View dimensions should not be influenced by their content (views). */
+[data-view-name] {
     overflow: hidden;
 }
