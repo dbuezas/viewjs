@@ -32,7 +32,6 @@
         self._container                 = self.configure(self._container,                   config.container,                   undefined);
         self._onViewDidLoad             = self.configure(self._onViewDidLoad,               config.onViewDidLoad,               function () {});
         self._onViewWillUnload          = self.configure(self._onViewWillUnload,            config.onViewWillUnload,            function () {});
-        self._parentView                = self.configure(self._parentView,                  config.parentView,                  undefined);
 
         // DEBUG: set unique id from incremented instance counter:
         /*
@@ -45,14 +44,9 @@
         // Pseudo private/read only properties:
         self._containerElement = undefined;
         self._viewElement = undefined;
-        self._childViews = [];
+
         // Internal state, do not alter:
         self._viewDidLoadCalled = false;
-
-        // Immediately add this view as a child view of a pre-configured parent view:
-        if (self._parentView !== undefined) {
-            self._parentView.addChildView(self);
-        }
 
         return self;
     }
@@ -112,150 +106,17 @@
     };
 
     /*
-     *  Parent/child view hierarchy management
+     *  Markup/DOM management
      */
 
-    // Returns the actual DOM element selected by self._container property - scoped to the
-    // parent view DOM if self._parentView is configured and loaded, otherwise selected globally:
+    // Returns the actual DOM element globally selected by self._container property:
     View.prototype._elementForContainer = function () {
         var self = this;
         if (self._container === undefined) {
             return []; // allow evaluation of length property
         }
-        var selector = "[data-view-container='" + self._container + "']";
-        if (self._parentView !== undefined && self._parentView.isLoaded() === true) {
-            return self._parentView.m(selector);
-        } else {
-            return $(selector);
-        }
+        return $("[data-view-container='" + self._container + "']");
     };
-
-    // Adds a view to the view hierarchy as a child that will be automatically managed during loading/unloading;
-    // Returns a conflicting child view or undefined in case of success:
-    View.prototype.addChildView = function (newChildView) {
-        var self = this;
-        var conflictingChildView;
-
-        // Look for a conflicting child view that wants to occupy the same container as newChildView:
-        $.each(self._childViews, function (index, existingChildView) {
-            if (existingChildView._container !== undefined && existingChildView._container === newChildView._container) {
-                conflictingChildView = existingChildView;
-                return false;
-            }
-        });
-
-        // Ignore attempt to add newChildView subsequently if already existing:
-        if (conflictingChildView === newChildView) {
-            return newChildView;
-        }
-
-        // If conflict exists, ignore adding, notify and return the conflicting child view, otherwise add and return undefined ("no conflict"):
-        if (conflictingChildView !== undefined) {
-            console.log("[View.prototype.addChildView] Another child view already occupies the same view container.");
-            return conflictingChildView;
-        } else {
-            newChildView._parentView = self;
-            self._childViews.push(newChildView);
-
-            // If self is already loaded, load the new child view immediately:
-            if (self._viewDidLoadCalled === true) {
-                newChildView.load();
-            }
-
-            return undefined;
-        }
-    };
-
-    // Unloads and removes a previously via addChildView added child view from the view hierarchy:
-    View.prototype.removeChildView = function (existingChildView) {
-        var self = this;
-        var childViewRemoved = false;
-        $.each(self._childViews, function (index, childView) {
-            if (childView === existingChildView) {
-
-                // Unload from DOM:
-                childView.unload();
-
-                // Detach parent/child relationship:
-                childView.removeAllChildViews();
-                childView._parentView = undefined;
-                self._childViews.splice(index, 1);
-
-                childViewRemoved = true;
-                return false;
-            }
-        });
-
-        if (childViewRemoved === false) {
-            console.log("[View.prototype.removeChildView] View is not a child view.");
-        }
-    };
-
-    // Removes all child views recursively down the view hierarchy:
-    View.prototype.removeAllChildViews = function () {
-        var self = this;
-        $.each(self._childViews, function (index, childView) {
-            childView.removeAllChildViews();
-            childView._parentView = undefined;
-        });
-        self._childViews = [];
-    };
-
-    // Unloads and removes the view from the parent view hierarchy (behaves the same as removeChildView):
-    View.prototype.removeFromParentView = function () {
-        var self = this;
-        if (self._parentView === undefined) {
-            throw "[View.prototype.removeFromParentView] View has no parent view.";
-        }
-        self._parentView.removeChildView(self);
-        self._parentView = undefined;
-    };
-
-    // Traverses the view hierarchy recursively starting with self and it's child views
-    // and invokes a function for each view passing the view and the recursion level:
-    View.prototype.traverse = function (fn, level) {
-        var self = this;
-        if (level === undefined) {
-            level = 0;
-        }
-        fn(self, level);
-        $.each(self._childViews, function (index, childView) {
-            childView.traverse(fn, level + 1);
-        });
-    };
-
-    // Returns a string representation of the view:
-    // Format: "<constructor name> [<data-view-container attribute value on container element>]"
-    View.prototype.toString = function () {
-        var self = this;
-        var str = self.constructor.name;
-        if (self.isLoaded()) {
-            str += " [" + self._containerElement.data("view-container") + "]";
-        } else {
-            str += " [not loaded]";
-        }
-        return str;
-    };
-
-    // Returns the current state of the view hierarchy as a humman readable string.
-    View.prototype.getViewHierarchyHumanReadable = function () {
-        var self = this;
-        var hierarchyOutput = "";
-        self.traverse(function (view, level) {
-            for (var i = 1; i < level; i++) {
-                hierarchyOutput += "|    ";
-            }
-            if (level > 0) {
-                hierarchyOutput += "|--> ";
-            }
-            hierarchyOutput += view + "\n";
-        });
-        return hierarchyOutput;
-    };
-
-    /*
-     *  Markup/DOM management
-     */
 
     // Determines wether the view's DOM is currently loaded (true if containerElement and viewElement exist):
     View.prototype.isLoaded = function () {
@@ -279,11 +140,6 @@
     View.prototype.load = function () {
         var self = this;
 
-        // Except for root views, all views must be part of a view hierarchy:
-        if (self._parentView === undefined && self._isRootView === false) {
-            throw "[View.prototype.load] View detached from view hierarchy. Attempting to load a view that has no parent view.";
-        }
-
         // If self is already loaded, unload from currently occupied container so that a reload is possible:
         self.unload();
 
@@ -295,19 +151,7 @@
             throw "[View.prototype.load] Error while loading a view into a container: container not specified or the container element is not existent.";
         }
 
-        // If a parent view is configured, make sure that:
-        // - the container element is a descendant of the parent view's DOM
-        // - the container element is not a descendant of any parent view's other child view containers
-        if (self._parentView !== undefined) {
-            if (self._containerElement.parents().index(self._parentView._viewElement) < 0) {
-                throw "[View.prototype.load] Error while loading a view into a container: the container specified must be a descendant of the parent view's DOM.";
-            }
-            if (self._containerElement.parents().index(self._parentView._viewElement.find("[data-view-container]")) >= 0) {
-                throw "[View.prototype.load] Error while loading a view into a container: the container element must not be a descendant of any other child view container inside the parent view's DOM.";
-            }
-        }
-
-        // Forbid the view to take over a container that's already hosting another view (runtime check additional to addChildView):
+        // Forbid the view to take over a container that's already hosting another view:
         if (self._containerElement.children().length > 0) {
             throw "[View.prototype.load] Error while loading a view into a container: the container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
         }
@@ -331,11 +175,6 @@
             self.viewDidLoad();
             self._onViewDidLoad(self);
             self._viewDidLoadCalled = true;
-
-            // Load child views recursively:
-            $.each(self._childViews, function (index, childView) {
-                childView.load();
-            });
         });
 
         // Return view object:
@@ -346,11 +185,6 @@
     View.prototype.unload = function () {
         var self = this;
         if (self.isLoaded()) {
-
-            // Unload child views recursively down the view hierarchy:
-            $.each(self._childViews, function (index, childView) {
-                childView.unload();
-            });
 
             // Call unload notification method on self and on stakeholder before deleting the view's DOM:
             self.viewWillUnload();
