@@ -57,6 +57,13 @@
         $.extend(self, selfWithDefaults); // apply default on self
         $.extend(self, config); // config is king
 
+        // Immediately load a root view:
+        // Just setup a clean object suited for inheritance without kicking off any
+        // further view lifecycle steps (loading) when invoked as a prototype constructor:
+        if (!config._isPrototypeConstructor && self._isRootView) {
+            self._load();
+        }
+
         return self;
     }
 
@@ -93,7 +100,7 @@
 
         // Inherit:
         options.constructor.prototype = new self.constructor({
-            // Pass in an option indicating to the constructor that this call is used to create an prototype so that it
+            // Pass in an option indicating to the constructor that this call is used to create a prototype so that it
             // just sets up a clean object without kicking off any further view instance lifecycle steps (e.g. loading):
             _isPrototypeConstructor: true
         });
@@ -209,7 +216,7 @@
 
     // Loads markup from the HTML file specified by self._bundle into the DOM inside of the container
     // element identified by self._container, also loads associated scoped CSS styles from the bundle:
-    View.prototype.load = function () {
+    View.prototype._load = function () {
         var self = this;
 
         // A unique name must be configured so that the view instance can be distinguished from other views at the same hierarchy level:
