@@ -30,8 +30,8 @@
         self._bundle;
         self._isRootView;
         self._parentView;
-        self._onViewDidLoad;
-        self._onViewWillUnload;
+        self._onViewDidLoadCallbacks = $.Callbacks("unique memory");
+        self._onViewWillUnloadCallbacks = $.Callbacks("unique memory");
 
         // Public attributes:
         // Requirement:
@@ -46,10 +46,10 @@
             bundle: undefined,
             // Determines whether this view is the first view in a view hierarchy (has no parent view):
             isRootView: false,
-            // Called when the view has been loaded:
-            onViewDidLoad: $.noop,
-            // Called before the view is unloaded:
-            onViewWillUnload: $.noop
+            // Subscription for viewDidLoad events:
+            onViewDidLoad: undefined,
+            // Subscription for viewWillUnload events:
+            onViewWillUnload: undefined
         }, self); // if not already defined on prototype/self -> set default
         $.extend(self, selfWithDefaults); // apply default on self
         $.extend(self, config); // config is king
@@ -57,9 +57,6 @@
         // Pseudo private/read only properties:
         self._containerElement = undefined;
         self._viewElement = undefined;
-
-        // Internal state, do not alter:
-        self._viewDidLoadCalled = false;
 
         return self;
     }
@@ -97,17 +94,27 @@
 
     // onViewDidLoad:
     Object.defineProperty(View.prototype, "onViewDidLoad", {
-        get: function () { return this._onViewDidLoad; },
-        set: function (onViewDidLoad) {
-            this._onViewDidLoad = onViewDidLoad;
+        get: function () {
+            return {
+                add: this._onViewDidLoadCallbacks.add,
+                remove: this._onViewDidLoadCallbacks.remove
+            }
+        },
+        set: function (subscription) {
+            subscription && subscription.add && this._onViewDidLoadCallbacks.add(subscription.add);
         }
     });
 
     // onViewWillUnload:
     Object.defineProperty(View.prototype, "onViewWillUnload", {
-        get: function () { return this._onViewWillUnload; },
-        set: function (onViewWillUnload) {
-            this._onViewWillUnload = onViewWillUnload;
+        get: function () {
+            return {
+                add: this._onViewWillUnloadCallbacks.add,
+                remove: this._onViewWillUnloadCallbacks.remove
+            }
+        },
+        set: function (subscription) {
+            subscription && subscription.add && this._onViewWillUnloadCallbacks.add(subscription.add);
         }
     });
 
@@ -191,8 +198,7 @@
 
             // View is basically loaded, so call load notification on self and on stakeholder:
             self.viewDidLoad();
-            self.onViewDidLoad(self);
-            self._viewDidLoadCalled = true;
+            self._onViewDidLoadCallbacks.fire(self);
         });
 
         // Return view object:
@@ -206,7 +212,7 @@
 
             // Call unload notification method on self and on stakeholder before deleting the view's DOM:
             self.viewWillUnload();
-            self.onViewWillUnload(self);
+            self._onViewWillUnloadCallbacks.fire(self);
         }
 
         // Delete the view's DOM while leaving the container intact:
@@ -217,7 +223,6 @@
         // Release DOM references:
         self._containerElement = undefined;
         self._viewElement = undefined;
-        self._viewDidLoadCalled = false;
     };
 
     // Return the constructor as the module value:
