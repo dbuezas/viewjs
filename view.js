@@ -46,12 +46,8 @@
         self._containerElement = undefined;
         self._viewElement = undefined;
         self._childViews = [];
-        self._outlets = {};
-        self._markupProperties = {};
-        self._targetActions = {};
         // Internal state, do not alter:
         self._viewDidLoadCalled = false;
-        self._wasAutomaticallyCreated = false;
 
         // Immediately add this view as a child view of a pre-configured parent view:
         if (self._parentView !== undefined) {
@@ -185,18 +181,6 @@
                 childView._parentView = undefined;
                 self._childViews.splice(index, 1);
 
-                // Remove outlets that are referencing childView:
-                $.each(self._outlets, function (outletKey, outletValue) {
-                    if (outletValue === childView) {
-                        self._outlets[outletKey] = undefined;
-                        // no break here because there might be other outlets referencing childView
-                    }
-                });
-
-                // TODO: remove properties and target actions
-                // Remove all target action events that have a string as their action??
-                // -> no, probably better to add a "createdFromDataAttribute"-property to each self._targetActions object
-
                 childViewRemoved = true;
                 return false;
             }
@@ -215,8 +199,6 @@
             childView._parentView = undefined;
         });
         self._childViews = [];
-        self._outlets = {};
-        // TODO: outlets, properties and target actions???
     };
 
     // Unloads and removes the view from the parent view hierarchy (behaves the same as removeChildView):
@@ -272,26 +254,6 @@
     };
 
     /*
-     *  Target action events
-     */
-
-    // Registers a target action event and assigns a specific target and action:
-    View.prototype.registerTargetActionEvent = function (eventName, target, action) {
-        var self = this;
-        self._targetActions[eventName] = {
-            "target": target,
-            "action": action,
-            "trigger": function (params) {
-                if (typeof this.action === "function") {
-                    this.action(params);
-                } else if (typeof this.action === "string") {
-                    this.target[this.action].call(this.target, params);
-                }
-            }
-        };
-    };
-
-    /*
      *  Markup/DOM management
      */
 
@@ -310,36 +272,6 @@
             return self._viewElement.find(selector);
         }
         return self._viewElement;
-    };
-
-    // Reads values of markup properties from data-property-* attributes on container element into self._markupProperties:
-    View.prototype._fetchAttributedPropertiesFromViewContainer = function () {
-        var self = this;
-        if (self.isLoaded() === true) {
-            $.each(self._containerElement.data(), function (propertyName, propertyValue) {
-                if (propertyName.substr(0,8) === "property") {
-                    // Delete "property" prefix and lowercase first letter:
-                    propertyName = propertyName.substr(8, propertyName.length).charAt(0).toLowerCase() + propertyName.slice(9);
-                    self._markupProperties[propertyName] = propertyValue;
-                    //console.log("'" + propertyName + "' = '" + propertyValue + "'");
-                }
-            });
-        }
-    };
-
-    // Reads event names from data-event-* attributes on container element and registeres target action events:
-    View.prototype._fetchAttributedTargetActionEventsFromViewContainer = function () {
-        var self = this;
-        if (self.isLoaded() === true) {
-            $.each(self._containerElement.data(), function (eventName, actionName) {
-                if (eventName.substr(0,5) === "event") {
-                    // Delete "event" prefix and lowercase first letter:
-                    eventName = eventName.substr(5, eventName.length).charAt(0).toLowerCase() + eventName.slice(6);
-                    self.registerTargetActionEvent(eventName, self._parentView, actionName);
-                    //console.log("'" + eventName + "' = '" + actionName + "'");
-                }
-            });
-        }
     };
 
     // Loads markup from the HTML file specified by self._bundle into the DOM inside of the container
@@ -395,93 +327,15 @@
             // Apply own DOM reference expecting a single element as the root node:
             self._viewElement = self._containerElement.children().eq(0);
 
-            // Parse data-* attributes into properties and target actions:
-            self._fetchAttributedPropertiesFromViewContainer();
-            self._fetchAttributedTargetActionEventsFromViewContainer();
+            // View is basically loaded, so call load notification on self and on stakeholder:
+            self.viewDidLoad();
+            self._onViewDidLoad(self);
+            self._viewDidLoadCalled = true;
 
-            // Create a view for each data-load-view attribute occurence inside own DOM:
-
-            var automaticallyPopulatedContainers = self.m("[data-load-view]");
-            var containersByViewBundlesToBeLoaded = {}; // key-value with arrays as values
-
-            // Group each container by it's data-load-view (bundle) value:
-            automaticallyPopulatedContainers.each(function () {
-                var viewContainer = $(this);
-                var viewBundle = viewContainer.data("load-view");
-                containersByViewBundlesToBeLoaded[viewBundle] = containersByViewBundlesToBeLoaded[viewBundle] || [];
-                containersByViewBundlesToBeLoaded[viewBundle].push(viewContainer);
+            // Load child views recursively:
+            $.each(self._childViews, function (index, childView) {
+                childView.load();
             });
-
-            // Populate RequireJS dependency array from grouped data-load-view bundles:
-            var viewBundlesToBeLoaded = [];
-            $.each(containersByViewBundlesToBeLoaded, function (bundle, viewContainers) {
-                viewBundlesToBeLoaded.push(bundle);
-            });
-
-            // Resolve dependencies for view bundles to be loaded:
-            if (viewBundlesToBeLoaded.length > 0) {
-                require(viewBundlesToBeLoaded, function () {
-
-                    // Each element in arguments array passed to this function by will be the corresponding constructor
-                    // function for the view specified at the respective position in the viewBundlesToBeLoaded array:
-                    $.each(arguments, function (index, ViewConstructor) {
-
-                        // For each container create and add child views of type <ViewConstructor>:
-                        $.each(containersByViewBundlesToBeLoaded[viewBundlesToBeLoaded[index]], function (index, containerElement) {
-
-                            // Automatically create a new child view:
-                            var newChildView = new ViewConstructor({
-                                container: containerElement.data("view-container")
-                            });
-
-                            // If the child view is a plain view, additionally look for a "data-load-bundle" attribute:
-                            if (ViewConstructor === View) {
-                                newChildView._bundle = containerElement.data("load-bundle");
-                            }
-
-                            newChildView._wasAutomaticallyCreated = true;
-
-                            // Add the child view and notify in case of a conflict, otherwise create an outlet connection:
-                            var conflictingChildView = self.addChildView(newChildView);
-                            if (conflictingChildView !== undefined) { // conflict exists
-                                if (conflictingChildView._wasAutomaticallyCreated === false) {
-                                    // Presence of user defined view suppresses automatic creation:
-                                    console.log("[View.prototype.load] A child view has already been added programmatically for a view container that is defined to be populated with a view automatically. Automatic creation as well as creation of outlet and target actions of the affected view is disabled.");
-                                } else {
-                                    // Throw away the newly created view in favor of reusing the existing automatically created view (only relevant in case of a reload):
-                                    newChildView = conflictingChildView;
-                                }
-                            } else {
-                                // Add an outlet connection if specified by "data-outlet" attribute on container element:
-                                var outlet = containerElement.data("outlet");
-                                if (outlet !== undefined) {
-                                    self._outlets[outlet] = newChildView;
-                                }
-                            }
-                        });
-                    });
-
-                    // View is basically loaded, so call load notification on self and on stakeholder:
-                    self.viewDidLoad();
-                    self._onViewDidLoad(self);
-                    self._viewDidLoadCalled = true;
-
-                    // Load child views recursively:
-                    $.each(self._childViews, function (index, childView) {
-                        childView.load();
-                    });
-                });
-            // Don't need to wait for asynchronous require, view is basically loaded, so call load notification on self and on stakeholder:
-            } else {
-                self.viewDidLoad();
-                self._onViewDidLoad(self);
-                self._viewDidLoadCalled = true;
-
-                // Load child views recursively:
-                $.each(self._childViews, function (index, childView) {
-                    childView.load();
-                });
-            }
         });
 
         // Return view object:
@@ -511,7 +365,6 @@
         // Release DOM references:
         self._containerElement = undefined;
         self._viewElement = undefined;
-        self._markupProperties = {};
         self._viewDidLoadCalled = false;
     };
 
