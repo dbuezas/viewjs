@@ -61,6 +61,69 @@
     }
 
     /*
+     *  Inheritance
+     */
+
+    // This helper function makes prototypal inheritance from Views syntactically cleaner:
+    View.prototype.extend = function (options) {
+        var self = this;
+
+        // Configure defaults:
+        options = $.extend({
+            constructor: function (config) {
+
+                // This is a minimal default implementation of a constructor.
+                // Please suppy your own as soon as applicable.
+
+                var self = this; // avoid "this" context scoping issues
+
+                // Call the super constructor which initializes/configures
+                // the inherited part of this view controller:
+                self.super.constructor.call(self, config);
+
+                // Initialize/configure the custom part of this view:
+                // TODO: do I need to have such a complex construct like in the View constructor??
+                $.extend(self, {
+                    // additional options
+                }, config);
+
+                return self; // optional
+            }
+        }, options);
+
+        // Inherit:
+        options.constructor.prototype = new self.constructor({
+            // Pass in an option indicating to the constructor that this call is used to create an prototype so that it
+            // just sets up a clean object without kicking off any further view instance lifecycle steps (e.g. loading):
+            _isPrototypeConstructor: true
+        });
+        options.constructor.prototype.constructor = options.constructor; // correct constructor pointer
+
+        // Merge additional options into prototype:
+        $.extend(options.constructor.prototype, options);
+
+        // Set convenience reference to super:
+        options.constructor.prototype.super = {
+            constructor: self.constructor, // original constructor of the object inherited from (before the constructor pointer got corrected)
+            object: options.constructor.prototype // alias for self.prototype
+        };
+
+        return options.constructor; // assignment is optional
+    };
+
+    /*
+     *  Lifecycle inheritance interface/notification hooks
+     */
+
+    View.prototype.viewDidLoad = function () {
+        // optionally override/implement in inherited object
+    };
+
+    View.prototype.viewWillUnload = function () {
+        // optionally override/implement in inherited object
+    };
+
+    /*
      *  Accessors
      */
 
@@ -116,18 +179,6 @@
             subscription && subscription.add && this._onViewWillUnloadCallbacks.add(subscription.add);
         }
     });
-
-    /*
-     *  Lifecycle inheritance interface/notification hooks
-     */
-
-    View.prototype.viewDidLoad = function () {
-        // optionally override/implement in inherited object
-    };
-
-    View.prototype.viewWillUnload = function () {
-        // optionally override/implement in inherited object
-    };
 
     /*
      *  Markup/DOM management
