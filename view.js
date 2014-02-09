@@ -33,11 +33,10 @@
         self._onViewWillUnloadCallbacks = $.Callbacks("unique memory");
 
         // Private (internal only) attributes:
-        self._viewElement; // loaded root DOM node (replacement of the original container element)
+        self._viewElement; // loaded view root DOM node (replacement of the original container element)
         self._containerElement; // backup copy of the original container element for restoring upon unloading
 
-        // Public attributes:
-        // Requirement:
+        // Configure defaults:
         // - attribute in instance config has highest precedence
         // - if attribute in instance config not defined -> attribute in prototype/self has next highest precedence
         // - if attribute in prototype/self not defined -> attribute in defaults has next highest precedence
@@ -123,11 +122,11 @@
      */
 
     View.prototype.viewDidLoad = function () {
-        // optionally override/implement in inherited object
+        // optionally override and implement in inherited object
     };
 
     View.prototype.viewWillUnload = function () {
-        // optionally override/implement in inherited object
+        // optionally override and implement in inherited object
     };
 
     /*
@@ -191,7 +190,7 @@
      *  Markup/DOM management
      */
 
-    // Determines wether the view's DOM is currently loaded (true if _viewElement and _containerElement exist):
+    // Determines whether the view's DOM is currently loaded (true if _viewElement and _containerElement exist):
     View.prototype.isLoaded = function () {
         var self = this;
         return (self._viewElement && self._viewElement.length > 0 && self._containerElement && self._containerElement.length > 0);
@@ -214,9 +213,8 @@
         }
     };
 
-    // Loads markup from the HTML file specified by self._bundle into the DOM inside of the container
-    // element identified by self._container, also loads associated scoped CSS styles from the bundle:
-    View.prototype._load = function () {
+    // Loads markup from the HTML file specified by self._bundle into the container element
+    // identified by self._name, also loads associated scoped CSS styles from the bundle:
         var self = this;
 
         // A unique name must be configured so that the view instance can be distinguished from other views at the same hierarchy level:
@@ -267,7 +265,7 @@
             // Set type of view controller for scoping purposes:
             self._viewElement.attr("data-view-controller", self.constructor.name);
 
-            // View is basically loaded, so call load notification on self and on subscribed stakeholders:
+            // Call "did load" notification on self and on subscribed stakeholders:
             self.viewDidLoad();
             self._onViewDidLoadCallbacks.fire(self);
         });
@@ -283,7 +281,7 @@
         // Unload only if loaded:
         if (self.isLoaded()) {
 
-            // Call unload notification method on self and on stakeholder before deleting the view's DOM:
+            // Call "will unload" notification on self and on subscribed stakeholders:
             self.viewWillUnload();
             self._onViewWillUnloadCallbacks.fire(self);
 
