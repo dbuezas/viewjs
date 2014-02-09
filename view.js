@@ -54,14 +54,7 @@
             onViewWillUnload: undefined
         }, self); // if not already defined on prototype/self -> set default
         $.extend(self, selfWithDefaults); // apply default on self
-        $.extend(self, config); // config is king
-
-        // Immediately load a root view:
-        // Just setup a clean object suited for inheritance without kicking off any
-        // further view lifecycle steps (loading) when invoked as a prototype constructor:
-        if (!config._isPrototypeConstructor && self._isRootView) {
-            self._load();
-        }
+        $.extend(self, config || {}); // config is king
 
         return self;
     }
@@ -71,11 +64,11 @@
      */
 
     // This helper function makes prototypal inheritance from Views syntactically cleaner:
-    View.prototype.extend = function (options) {
+    View.prototype.extend = function (extension) {
         var self = this;
 
         // Configure defaults:
-        options = $.extend({
+        extension = $.extend({
             constructor: function (config) {
 
                 // This is a minimal default implementation of a constructor.
@@ -95,26 +88,22 @@
 
                 return self; // optional
             }
-        }, options);
+        }, extension);
 
         // Inherit:
-        options.constructor.prototype = new self.constructor({
-            // Pass in an option indicating to the constructor that this call is used to create a prototype so that it
-            // just sets up a clean object without kicking off any further view instance lifecycle steps (e.g. loading):
-            _isPrototypeConstructor: true
-        });
-        options.constructor.prototype.constructor = options.constructor; // correct constructor pointer
+        extension.constructor.prototype = new self.constructor();
+        extension.constructor.prototype.constructor = extension.constructor; // correct constructor pointer
 
-        // Merge additional options into prototype:
-        $.extend(options.constructor.prototype, options);
+        // Merge additional extensions into prototype:
+        $.extend(extension.constructor.prototype, extension);
 
         // Set convenience reference to super:
-        options.constructor.prototype.super = {
+        extension.constructor.prototype.super = {
             constructor: self.constructor, // original constructor of the object inherited from (before the constructor pointer got corrected)
-            object: options.constructor.prototype // alias for self.prototype
+            object: extension.constructor.prototype // alias for self.prototype
         };
 
-        return options.constructor; // assignment is optional
+        return extension.constructor; // assignment is optional
     };
 
     /*
@@ -215,6 +204,7 @@
 
     // Loads markup from the HTML file specified by self._bundle into the container element
     // identified by self._name, also loads associated scoped CSS styles from the bundle:
+    View.prototype.load = function () {
         var self = this;
 
         // A unique name must be configured so that the view instance can be distinguished from other views at the same hierarchy level:
