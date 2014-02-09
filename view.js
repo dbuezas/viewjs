@@ -234,6 +234,8 @@
             throw "[View.prototype._load] Error while loading a view into a container: Container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
         }
 
+        var viewDidLoad = $.Deferred();
+
         // Load equally named HTML markup and CSS stylesheet files via require loader plugins (they can only be loaded paired/they must have the same file name):
         require(["html!" + self._bundle + ".html", "css!" + self._bundle], function (html, css) {
 
@@ -258,15 +260,18 @@
             // Call "did load" notification on self and on subscribed stakeholders:
             self.viewDidLoad();
             self._onViewDidLoadCallbacks.fire(self);
+            viewDidLoad.resolve(self);
         });
 
-        // Return view object:
-        return self;
+        // Return "did load" promise:
+        return viewDidLoad.promise();
     };
 
     // Unloads the DOM by emptying the container:
     View.prototype.unload = function () {
         var self = this;
+
+        var viewWillUnload = $.Deferred();
 
         // Unload only if loaded:
         if (self.isLoaded()) {
@@ -274,6 +279,7 @@
             // Call "will unload" notification on self and on subscribed stakeholders:
             self.viewWillUnload();
             self._onViewWillUnloadCallbacks.fire(self);
+            viewWillUnload.resolve(self);
 
             // Delete the view's DOM by restoring the original container element:
             self._viewElement.replaceWith(self._containerElement);
@@ -282,6 +288,9 @@
             self._containerElement = undefined;
             self._viewElement = undefined;
         }
+
+        // Return "will unload" promise:
+        return viewWillUnload.promise();
     };
 
     // Return the constructor as the module value:
