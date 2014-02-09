@@ -165,12 +165,12 @@
     Object.defineProperty(View.prototype, "onViewDidLoad", {
         get: function () {
             return {
-                add: this._onViewDidLoadCallbacks.add,
-                remove: this._onViewDidLoadCallbacks.remove
+                subscribe: this._onViewDidLoadCallbacks.add,
+                unsubscribe: this._onViewDidLoadCallbacks.remove
             }
         },
         set: function (subscription) {
-            subscription && subscription.add && this._onViewDidLoadCallbacks.add(subscription.add);
+            subscription && subscription.subscribe && this._onViewDidLoadCallbacks.add(subscription.subscribe);
         }
     });
 
@@ -178,12 +178,12 @@
     Object.defineProperty(View.prototype, "onViewWillUnload", {
         get: function () {
             return {
-                add: this._onViewWillUnloadCallbacks.add,
-                remove: this._onViewWillUnloadCallbacks.remove
+                subscribe: this._onViewWillUnloadCallbacks.add,
+                unsubscribe: this._onViewWillUnloadCallbacks.remove
             }
         },
         set: function (subscription) {
-            subscription && subscription.add && this._onViewWillUnloadCallbacks.add(subscription.add);
+            subscription && subscription.subscribe && this._onViewWillUnloadCallbacks.add(subscription.subscribe);
         }
     });
 
