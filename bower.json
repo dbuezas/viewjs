@@ -1,0 +1,9 @@
+{
+    "name": "viewjs",
+    "version": "0.0.1",
+    "private": true,
+    "main": ["view.js", "view.css"],
+    "ignore": [
+        ".editorconfig"
+  ],
+}
