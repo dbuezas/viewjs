@@ -118,7 +118,7 @@
     View.prototype.defineProperty("name", {
         get: function () { return this._name; },
         set: function (name) {
-            if (this.isLoaded()) throw "[View->name] Cannot change property while view is loaded.";
+            if (this.isLoaded) throw "[View->name] Cannot change property while view is loaded.";
             this._name = name;
         }
     });
@@ -127,7 +127,7 @@
     View.prototype.defineProperty("bundle", {
         get: function () { return this._bundle; },
         set: function (bundle) {
-            if (this.isLoaded()) throw "[View->bundle] Cannot change property while view is loaded.";
+            if (this.isLoaded) throw "[View->bundle] Cannot change property while view is loaded.";
             this._bundle = bundle;
         }
     });
@@ -136,7 +136,7 @@
     View.prototype.defineProperty("isRootView", {
         get: function () { return this._isRootView; },
         set: function (isRootView) {
-            if (this.isLoaded()) throw "[View->isRootView] Cannot change property while view is loaded.";
+            if (this.isLoaded) throw "[View->isRootView] Cannot change property while view is loaded.";
             this._isRootView = typeof isRootView !== "undefined" ? isRootView : false;
         }
     });
@@ -145,7 +145,7 @@
     View.prototype.defineProperty("parentView", {
         get: function () { return this._parentView; },
         set: function (parentView) {
-            if (this.isLoaded()) throw "[View->parentView] Cannot change property while view is loaded.";
+            if (this.isLoaded) throw "[View->parentView] Cannot change property while view is loaded.";
             if (!this.isRootView) {
                 this._parentView = parentView;
                 if (typeof this._parentView !== "undefined") {
@@ -160,7 +160,7 @@
         get: function () { return this._childViews || []; },
         set: function (childViews) {
             var self = this;
-            if (self.isLoaded()) throw "[View->childViews] Cannot change property while view is loaded.";
+            if (self.isLoaded) throw "[View->childViews] Cannot change property while view is loaded.";
             self._childViews = self._childViews || [];
             childViews = childViews || [];
             // Detach current child views from self:
@@ -207,15 +207,16 @@
         }
     });
 
+    // isLoaded determines whether the view's DOM is currently loaded (true if _viewElement and _containerElement exist):
+    View.prototype.defineProperty("isLoaded", {
+        get: function () {
+            return (this._viewElement && this._viewElement.length > 0 && this._containerElement && this._containerElement.length > 0);
+        }
+    });
+
     /*
      *  Markup/DOM management
      */
-
-    // Determines whether the view's DOM is currently loaded (true if _viewElement and _containerElement exist):
-    View.prototype.isLoaded = function () {
-        var self = this;
-        return (self._viewElement && self._viewElement.length > 0 && self._containerElement && self._containerElement.length > 0);
-    };
 
     // Performs a jQuery selector scoped to the root element of the loaded view:
     // - returns the root element of the loaded view if invoked without parameters
@@ -223,7 +224,7 @@
     // TODO: don't select deeper than the parent view (ignore inner DOM of child views)
     View.prototype.$ = function (selector) {
         var self = this;
-        if (self.isLoaded()) {
+        if (self.isLoaded) {
             return selector ? self._viewElement.find(selector) : self._viewElement;
         } else { // view not loaded
             if (selector) { // selector specified
@@ -240,7 +241,7 @@
         var self = this;
 
         // Skip if parent view is not loaded yet:
-        if (self._parentView && !self._parentView.isLoaded()) {
+        if (self._parentView && !self._parentView.isLoaded) {
             throw "[View.prototype.load] Error while loading a view into a container: Parent view is not loaded yet.";
         }
 
@@ -335,7 +336,7 @@
         var viewWillUnload = $.Deferred();
 
         // Unload only if loaded:
-        if (self.isLoaded()) {
+        if (self.isLoaded) {
 
             // Unload child views recursively down the view hierarchy:
             $.each(self._childViews, function (index, childView) {
