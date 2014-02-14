@@ -358,6 +358,42 @@
         return viewWillUnload.promise();
     };
 
+    /*
+     *  Debugging
+     */
+
+    // Returns a string representation of the view:
+    // Format: "<controller/constructor>/<bundle> @[<instance/container/name>]"
+    View.prototype.toString = function () {
+        var self = this;
+        var str = self.constructor.name + (self.constructor.name === self.bundle ? "" : "/" + self.bundle);
+        str += (self.isLoaded) ? " @[" + self.name + "]" : str += " @[not loaded]";
+        return str;
+    };
+
+    // Traverses the view hierarchy recursively starting with self and it's child views
+    // and invokes a function for each view passing the view and the recursion level:
+    View.prototype.traverse = function (fn, level) {
+        var self = this;
+        if (level === undefined) level = 0;
+        fn(self, level);
+        $.each(self._childViews, function (index, childView) {
+            childView.traverse(fn, level + 1);
+        });
+    };
+
+    // Returns the current state of the view hierarchy as a humman readable string:
+    View.prototype.getViewHierarchyHumanReadable = function () {
+        var self = this;
+        var hierarchyOutput = "";
+        self.traverse(function (view, level) {
+            for (var i = 1; i < level; i++) hierarchyOutput += "|    ";
+            if (level > 0) hierarchyOutput += "|--> ";
+            hierarchyOutput += view + "\n";
+        });
+        return hierarchyOutput;
+    };
+
     // Return the constructor as the module value:
     return View;
 }));
