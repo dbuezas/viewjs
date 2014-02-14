@@ -1,5 +1,5 @@
 /**
- * ViewJS 0.2.0
+ * ViewJS 0.2.1
  * Copyright (c) 2014, Andreas Tietz
  * Released under the MIT license
  */
