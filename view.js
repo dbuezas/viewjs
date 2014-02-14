@@ -25,36 +25,36 @@
             return new View(config);
         }
 
-        // Private attributes with public accessors/properties (see $.extend below):
-        self._name;
-        self._bundle;
-        self._isRootView;
-        self._onViewDidLoadCallbacks = $.Callbacks("unique memory");
-        self._onViewWillUnloadCallbacks = $.Callbacks("unique memory");
+        // Lazily initialize the config hash:
+        config = config || {};
 
-        // Private (internal only) attributes:
+        // Public (properties):
+
+        // Unique name for the view to be distinguished from other views at the same hierarchy level:
+        self.name = config.name;
+
+        // HTML & CSS module/filenames:
+        self.bundle = config.bundle;
+
+        // Determines whether this view is the first view in a view hierarchy (has no parent view):
+        self.isRootView = config.isRootView;
+
+        // Parent or "owner" of this view:
+        self.parentView = config.parentView;
+
+        // Child views "owned" by this view:
+        self.childViews = config.childViews;
+
+        // Subscription for viewDidLoad events:
+        self.onViewDidLoad = config.onViewDidLoad;
+
+        // Subscription for viewWillUnload events:
+        self.onViewWillUnload = config.onViewWillUnload;
+
+        // Private:
+
         self._viewElement; // loaded view root DOM node (replacement of the original container element)
         self._containerElement; // backup copy of the original container element for restoring upon unloading
-
-        // Configure defaults:
-        // - attribute in instance config has highest precedence
-        // - if attribute in instance config not defined -> attribute in prototype/self has next highest precedence
-        // - if attribute in prototype/self not defined -> attribute in defaults has next highest precedence
-        // $.extend(self, defaults, self, config); // not directly possible with jquery, hence the longer solution
-        var selfWithDefaults = $.extend({
-            // Unique name for the view to be distinguished from other views at the same hierarchy level:
-            name: undefined,
-            // HTML & CSS module/filenames:
-            bundle: undefined,
-            // Determines whether this view is the first view in a view hierarchy (has no parent view):
-            isRootView: false,
-            // Subscription for viewDidLoad events:
-            onViewDidLoad: undefined,
-            // Subscription for viewWillUnload events:
-            onViewWillUnload: undefined
-        }, self); // if not already defined on prototype/self -> set default
-        $.extend(self, selfWithDefaults); // apply default on self
-        $.extend(self, config || {}); // config is king
 
         return self;
     }
@@ -63,45 +63,32 @@
      *  Inheritance
      */
 
-    // This helper function makes prototypal inheritance from Views syntactically cleaner:
+    // Helper function making prototypal inheritance from Views syntactically cleaner:
     View.prototype.extend = function (extension) {
         var self = this;
 
-        // Configure defaults:
+        // Configure extension defaults:
         extension = $.extend({
-            constructor: function (config) {
-
-                // This is a minimal default implementation of a constructor.
-                // Please suppy your own as soon as applicable.
-
-                var self = this; // avoid "this" context scoping issues
-
-                // Call the super constructor which initializes/configures
-                // the inherited part of this view controller:
-                self.super.constructor.call(self, config);
-
-                // Initialize/configure the custom part of this view:
-                // TODO: do I need to have such a complex construct like in the View constructor??
-                $.extend(self, {
-                    // additional options
-                }, config);
-
-                return self; // optional
-            }
+            constructor: function (config) { self.super.constructor.call(this, config); },
         }, extension);
 
-        // Inherit:
-        extension.constructor.prototype = new self.constructor();
-        extension.constructor.prototype.constructor = extension.constructor; // correct constructor pointer
+        // Copy constructor properties:
+        for (var key in self.constructor) {
+            if ({}.hasOwnProperty.call(self.constructor, key)) extension.constructor[key] = self.constructor[key];
+        };
+
+        // Build prototype constructor (avoids calling extension.constructor):
+        function PrototypeConstructor() {
+            this.constructor = extension.constructor;
+        };
+        PrototypeConstructor.prototype = self.constructor.prototype;
+
+        // Inherit prototype:
+        extension.constructor.prototype = new PrototypeConstructor();
+        extension.constructor.prototype.super = self.constructor.prototype;
 
         // Merge additional extensions into prototype:
         $.extend(extension.constructor.prototype, extension);
-
-        // Set convenience reference to super:
-        extension.constructor.prototype.super = {
-            constructor: self.constructor, // original constructor of the object inherited from (before the constructor pointer got corrected)
-            object: extension.constructor.prototype // alias for self.prototype
-        };
 
         return extension.constructor; // assignment is optional
     };
@@ -111,19 +98,24 @@
      */
 
     View.prototype.viewDidLoad = function () {
-        // optionally override and implement in inherited object
+        // optionally override and implement in inherited view
     };
 
     View.prototype.viewWillUnload = function () {
-        // optionally override and implement in inherited object
+        // optionally override and implement in inherited view
     };
 
     /*
      *  Accessors
      */
 
+    // Helper function for defining properties:
+    View.prototype.defineProperty = function (name, accessors) {
+        Object.defineProperty(this.constructor.prototype, name, accessors);
+    };
+
     // name:
-    Object.defineProperty(View.prototype, "name", {
+    View.prototype.defineProperty("name", {
         get: function () { return this._name; },
         set: function (name) {
             if (this.isLoaded()) throw "[View->name] Cannot change property while view is loaded.";
@@ -132,7 +124,7 @@
     });
 
     // bundle:
-    Object.defineProperty(View.prototype, "bundle", {
+    View.prototype.defineProperty("bundle", {
         get: function () { return this._bundle; },
         set: function (bundle) {
             if (this.isLoaded()) throw "[View->bundle] Cannot change property while view is loaded.";
@@ -141,36 +133,76 @@
     });
 
     // isRootView:
-    Object.defineProperty(View.prototype, "isRootView", {
+    View.prototype.defineProperty("isRootView", {
         get: function () { return this._isRootView; },
         set: function (isRootView) {
             if (this.isLoaded()) throw "[View->isRootView] Cannot change property while view is loaded.";
-            this._isRootView = isRootView;
+            this._isRootView = typeof isRootView !== "undefined" ? isRootView : false;
+        }
+    });
+
+    // parentView:
+    View.prototype.defineProperty("parentView", {
+        get: function () { return this._parentView; },
+        set: function (parentView) {
+            if (this.isLoaded()) throw "[View->parentView] Cannot change property while view is loaded.";
+            if (!this.isRootView) {
+                this._parentView = parentView;
+                if (typeof this._parentView !== "undefined") {
+                    this._parentView.childViews.push(this); // TODO: only add if not already there
+                }
+            }
+        }
+    });
+
+    // childViews:
+    View.prototype.defineProperty("childViews", {
+        get: function () { return this._childViews || []; },
+        set: function (childViews) {
+            var self = this;
+            if (self.isLoaded()) throw "[View->childViews] Cannot change property while view is loaded.";
+            self._childViews = self._childViews || [];
+            childViews = childViews || [];
+            // Detach current child views from self:
+            $.each(self._childViews, function (index, childView) {
+                childView._parentView = undefined;
+            });
+            // Remove current child views (release all references):
+            self._childViews.length = 0;
+            // Add new child views:
+            $.each(childViews, function (index, childView) {
+                childView._parentView = self;
+                self._childViews.push(childView); // TODO: only add if not already there
+            });
         }
     });
 
     // onViewDidLoad:
-    Object.defineProperty(View.prototype, "onViewDidLoad", {
+    View.prototype.defineProperty("onViewDidLoad", {
         get: function () {
+            this._onViewDidLoadCallbacks = this._onViewDidLoadCallbacks || $.Callbacks("unique memory");
             return {
                 subscribe: this._onViewDidLoadCallbacks.add,
                 unsubscribe: this._onViewDidLoadCallbacks.remove
             }
         },
         set: function (subscription) {
+            this._onViewDidLoadCallbacks = this._onViewDidLoadCallbacks || $.Callbacks("unique memory");
             subscription && subscription.subscribe && this._onViewDidLoadCallbacks.add(subscription.subscribe);
         }
     });
 
     // onViewWillUnload:
-    Object.defineProperty(View.prototype, "onViewWillUnload", {
+    View.prototype.defineProperty("onViewWillUnload", {
         get: function () {
+            this._onViewWillUnloadCallbacks = this._onViewWillUnloadCallbacks || $.Callbacks("unique memory");
             return {
                 subscribe: this._onViewWillUnloadCallbacks.add,
                 unsubscribe: this._onViewWillUnloadCallbacks.remove
             }
         },
         set: function (subscription) {
+            this._onViewWillUnloadCallbacks = this._onViewWillUnloadCallbacks || $.Callbacks("unique memory");
             subscription && subscription.subscribe && this._onViewWillUnloadCallbacks.add(subscription.subscribe);
         }
     });
@@ -207,6 +239,11 @@
     View.prototype.load = function () {
         var self = this;
 
+        // Skip if parent view is not loaded yet:
+        if (self._parentView && !self._parentView.isLoaded()) {
+            throw "[View.prototype.load] Error while loading a view into a container: Parent view is not loaded yet.";
+        }
+
         // A unique name must be configured so that the view instance can be distinguished from other views at the same hierarchy level:
         if (!self._name) {
             throw "[View.prototype.load] Error while loading a view into a container: Name not specified.";
@@ -214,7 +251,13 @@
 
         // A bundle must be configured (it must match a valid requirejs module id later on):
         if (!self._bundle) {
-            throw "[View.prototype._load] Error while loading a view into a container: (HTML/CSS)-bundle not specified.";
+            throw "[View.prototype.load] Error while loading a view into a container: (HTML/CSS)-bundle not specified.";
+        }
+
+        // Except for root views, all views must be part of a view hierarchy:
+        if (!self._isRootView && !self._parentView) { // declared as child view but no parent view configured
+            console.log(self)
+            throw "[View.prototype.load] Error while loading a view into a container: View detached from view hierarchy. Attempting to load a view that has no parent view. Only root views are allowed to do that.";
         }
 
         // If the view is already loaded, unload from currently occupied container element so that a reload is possible:
@@ -222,16 +265,29 @@
 
         // View is not loaded, so get a backup of the root (container) element identified by [data-view-name] for later use:
         // TODO: don't select deeper than the parent view (ignore inner DOM of child views)
-        self._containerElement = $("[data-view-name='" + self._name + "']");
+        var containerElementSelector = "[data-view-name='" + self._name + "']";
+        self._containerElement = ( self._parentView ? self._parentView.$(containerElementSelector) : $(containerElementSelector) );
 
         // In order for a view to get loaded, a valid container element must be existent:
         if (self._containerElement.length === 0) {
-            throw "[View.prototype._load] Error while loading a view into a container: Container element not specified or not existent.";
+            throw "[View.prototype.load] Error while loading a view into a container: Container element not specified or not existent.";
         }
 
         // Forbid the view to take over a container that's already hosting another view:
         if (self._containerElement.children().length > 0) {
-            throw "[View.prototype._load] Error while loading a view into a container: Container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
+            throw "[View.prototype.load] Error while loading a view into a container: Container is currently occupied by another view. Unload this view explicitly before attempting to load another view into the same container.";
+        }
+
+        // If a parent view is configured, make sure that:
+        // - the container element is a descendant of the parent view's DOM
+        // - the container element is not a descendant of any parent view's other child view containers
+        if (self._parentView) {
+            if (self._containerElement.parents().index(self._parentView._viewElement) < 0) {
+                throw "[View.prototype.load] Error while loading a view into a container: Container element must be a descendant of the parent view's DOM.";
+            }
+            if (self._containerElement.parents().index(self._parentView._viewElement.find("[data-view-container]")) >= 0) {
+                throw "[View.prototype.load] Error while loading a view into a container: Container element must not be a descendant of any other child view container inside the parent view's DOM.";
+            }
         }
 
         var viewDidLoad = $.Deferred();
@@ -261,6 +317,11 @@
             self.viewDidLoad();
             self._onViewDidLoadCallbacks.fire(self);
             viewDidLoad.resolve(self);
+
+            // Load child views recursively:
+            $.each(self._childViews, function (index, childView) {
+                childView.load();
+            });
         });
 
         // Return "did load" promise:
@@ -275,6 +336,11 @@
 
         // Unload only if loaded:
         if (self.isLoaded()) {
+
+            // Unload child views recursively down the view hierarchy:
+            $.each(self._childViews, function (index, childView) {
+                childView.unload();
+            });
 
             // Call "will unload" notification on self and on subscribed stakeholders:
             self.viewWillUnload();
