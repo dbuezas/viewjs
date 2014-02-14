@@ -55,8 +55,6 @@
 
         self._viewElement; // loaded view root DOM node (replacement of the original container element)
         self._containerElement; // backup copy of the original container element for restoring upon unloading
-
-        return self;
     }
 
     /*
