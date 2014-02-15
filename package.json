@@ -1,0 +1,25 @@
+{
+  "name": "viewjs",
+  "version": "0.2.1",
+  "description": "JavaScript utility for client-side web application user interface development.",
+  "main": "view.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dematerializer/viewjs.git"
+  },
+  "keywords": [
+    "view",
+    "ui"
+  ],
+  "author": "Andreas Tietz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dematerializer/viewjs/issues"
+  },
+  "homepage": "https://github.com/dematerializer/viewjs",
+  "devDependencies": {
+    "grunt": "~0.4.2",
+    "grunt-contrib-yuidoc": "~0.5.0",
+    "grunt-contrib-uglify": "~0.3.2"
+  }
+}
