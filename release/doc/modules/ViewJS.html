@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ViewJS - viewjs</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="shortcut icon" type="image/png" href="../assets/favicon.png">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+            
+                <h1><img src="../assets/css/logo.png" title="viewjs"></h1>
+            
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: 0.2.1</em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+    <h2 class="off-left">APIs</h2>
+    <div id="api-tabview" class="tabview">
+        <ul class="tabs">
+            <li><a href="#api-classes">Classes</a></li>
+            <li><a href="#api-modules">Modules</a></li>
+        </ul>
+
+        <div id="api-tabview-filter">
+            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+        </div>
+
+        <div id="api-tabview-panel">
+            <ul id="api-classes" class="apis classes">
+            
+                <li><a href="../classes/View.html">View</a></li>
+            
+            </ul>
+
+            <ul id="api-modules" class="apis modules">
+            
+                <li><a href="../modules/ViewJS.html">ViewJS</a></li>
+            
+            </ul>
+        </div>
+    </div>
+</div>
+
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+        Show:
+        <label for="api-show-inherited">
+            <input type="checkbox" id="api-show-inherited" checked>
+            Inherited
+        </label>
+
+        <label for="api-show-protected">
+            <input type="checkbox" id="api-show-protected">
+            Protected
+        </label>
+
+        <label for="api-show-private">
+            <input type="checkbox" id="api-show-private">
+            Private
+        </label>
+        <label for="api-show-deprecated">
+            <input type="checkbox" id="api-show-deprecated">
+            Deprecated
+        </label>
+
+    </div>
+
+
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+                        <h1>ViewJS Module</h1>
+<div class="box clearfix meta">
+    
+
+    
+        <div class="uses">
+            Requires
+            <ul class="inline commas">
+                
+                    <li>RequireJS</li>
+                
+                    <li>jQuery</li>
+                
+            </ul>
+        </div>
+    
+
+    
+        <div class="foundat">
+            Defined in: <a href="../files/view.js.html#l50"><code>view.js:50</code></a>
+        </div>
+    
+
+    
+</div>
+
+
+
+<div class="box intro">
+    <h1 id="viewjs">ViewJS</h1>
+<ul>
+<li>JavaScript utility/library that facilitates development of large scale client-side web applications with rich user interfaces</li>
+<li>introduces a structural/architectural abstraction layer on top of common client-side web technology (HTML/CSS/JS)</li>
+<li>inspired by and built around concepts found in native UI development</li>
+</ul>
+<h2 id="concept">Concept</h2>
+<p>Examination of a view from different perspectives &amp; definition of terminology:</p>
+<h3 id="view-component-architectural-point-of-view-">View Component (architectural point of view)</h3>
+<ul>
+<li>a reusable component being instantiated at runtime</li>
+<li>consists of a view controller and a bundle</li>
+<li>behavior and styling may be extended/overridden/customized by inheritance/cascading</li>
+</ul>
+<h3 id="view-controller-runtime-behavior-point-of-view-">View Controller (runtime/behavior point of view)</h3>
+<ul>
+<li>Constructor and prototype object providing common behavior across all instances of a view component</li>
+</ul>
+<h3 id="view-bundle-resource-graphical-representation-point-of-view-">View Bundle (resource/graphical representation point of view)</h3>
+<ul>
+<li>collection of resources providing means for a common graphical representation across all instances of a view component</li>
+<li>e.g. HTML markup, CSS stylesheet, media resources (e.g. images/audio/video)</li>
+</ul>
+<h3 id="view-general-runtime-instance-point-of-view-">View (general/runtime/instance point of view)</h3>
+<ul>
+<li>concrete instance of a view component</li>
+<li>self-contained/self-managed piece of UI, most like a widget</li>
+<li>scoping: managed DOM subtree that has scoped styling and behavior</li>
+<li>composition: view instances can be in a parent/child relationship meaning that a view may have one or more other views nested inside of itself. This results in a tree structure, the &quot;View Hierarchy&quot;</li>
+<li>lifecycle: a view has a lifecycle (construction/instantiation, loading, [showing, hiding, doing stuff], unloading, deallocation)</li>
+<li>memory management</li>
+</ul>
+
+</div>
+
+
+
+<div class="yui3-g">
+    <div class="yui3-u-1-2">
+        
+            <p>This module provides the following classes:</p>
+
+            <ul class="module-classes">
+            
+                <li class="module-class">
+                    <a href="../classes/View.html">
+                        View
+                    </a>
+                </li>
+            
+            </ul>
+        
+    </div>
+
+    <div class="yui3-u-1-2">
+        
+    </div>
+</div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>
