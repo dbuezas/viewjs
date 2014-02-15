@@ -13,7 +13,7 @@ Examination of a view from different perspectives & definition of terminology:
   - behavior and styling may be extended/overridden/customized by inheritance/cascading
 
 ### View Controller (runtime/behavior point of view)
-  - JavaScript prototype object providing scoped/configurable behavior across all instances of a view component
+  - Constructor and prototype object providing common behavior across all instances of a view component
 
 ### View Bundle (resource/graphical representation point of view)
   - collection of resources providing means for a common graphical representation across all instances of a view component
