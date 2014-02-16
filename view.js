@@ -39,11 +39,15 @@
  *  @requires RequireJS, jQuery
  */
 (function (factory) {
-    // Define this module and it's dependencies via AMD if posssible, otherwise use the global scope:
+    // Define this module and it's dependencies via RequireJS if possible:
     if (typeof define === "function" && define.amd) {
         define(["jquery"], factory);
+    // Otherwise export to node if possible:
+    } else if (typeof module === "object" && module.exports) {
+        module.exports = factory(jQuery);
+    // Otherwise define in the global scope:
     } else {
-        View = View || factory(jQuery);
+        View = factory(jQuery);
     }
 }(function ($) {
 
