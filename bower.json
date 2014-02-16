@@ -3,7 +3,5 @@
     "version": "0.2.0",
     "private": true,
     "main": ["view.js"],
-    "ignore": [
-        ".editorconfig"
-    ]
+    "ignore": ["./!(view.js)"]
 }
